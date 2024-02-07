@@ -1,0 +1,15 @@
+{
+  "name": "rs_crud",
+  "version": "1.0.0",
+  "description": "simple crud api",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "crud",
+    "node"
+  ],
+  "author": "Andrei Sauchankau",
+  "license": "ISC"
+}

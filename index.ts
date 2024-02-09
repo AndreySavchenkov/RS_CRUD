@@ -1,5 +1,7 @@
 import * as http from "http";
 import * as url from "url";
+import { v4 as uuidv4 } from "uuid";
+import { isValidUUID } from "./helpers";
 
 type User = {
   id: string;
@@ -32,7 +34,7 @@ function createUser(req: http.IncomingMessage, res: http.ServerResponse) {
       }
 
       const newUser: User = {
-        id: String(users.length + 1),
+        id: uuidv4(),
         username,
         age,
         hobbies,
@@ -48,8 +50,25 @@ function createUser(req: http.IncomingMessage, res: http.ServerResponse) {
   });
 }
 
+const getUserById = (
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  userId: string
+) => {
+  const userById = users.find((user) => user.id === userId);
+  if (!isValidUUID(userId)) {
+    res.writeHead(400, { "Content-Type": "text/plain" });
+    res.end("ID is invalid");
+  } else if (!userById) {
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("ID doesn't exist");
+  } else {
+    res.end(JSON.stringify(userById));
+  }
+};
+
 const getAllUsers = (req: http.IncomingMessage, res: http.ServerResponse) => {
-  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ users: users }));
 };
 
@@ -57,8 +76,13 @@ const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url || "", true);
   const { pathname } = parsedUrl;
 
-  if (pathname === "/api/users" && req.method === "GET") {
-    getAllUsers(req, res);
+  if (req.method === "GET" && pathname?.startsWith("/api/users")) {
+    const userId = pathname?.split("/")[3];
+    if (userId) {
+      getUserById(req, res, userId);
+    } else {
+      getAllUsers(req, res);
+    }
   } else if (pathname === "/api/users" && req.method === "POST") {
     createUser(req, res);
   } else {

@@ -67,6 +67,84 @@ const getUserById = (
   }
 };
 
+const updateUserById = (
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  userId: string
+) => {
+  let body = "";
+
+  req.on("data", (chunk) => {
+    body += chunk.toString();
+  });
+
+  req.on("end", () => {
+    try {
+      const { username, age, hobbies } = JSON.parse(body);
+
+      if (!isValidUUID(userId)) {
+        res.writeHead(400, { "Content-Type": "text/plain" });
+        res.end("ID is invalid");
+        return;
+      }
+
+      if (
+        typeof username !== "string" ||
+        typeof age !== "number" ||
+        !Array.isArray(hobbies)
+      ) {
+        res.writeHead(400, { "Content-Type": "text/plain" });
+        res.end("Invalid data format");
+        return;
+      }
+
+      const userIndex = users.findIndex((user) => user.id === userId);
+      if (userIndex === -1) {
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("User not found");
+        return;
+      }
+
+      users[userIndex] = {
+        ...users[userIndex],
+        username,
+        age,
+        hobbies,
+      };
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(users[userIndex]));
+    } catch (error) {
+      res.writeHead(400, { "Content-Type": "text/plain" });
+      res.end("Invalid JSON format");
+    }
+  });
+};
+
+const deleteUserById = (
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  userId: string
+) => {
+  if (!isValidUUID(userId)) {
+    res.writeHead(400, { "Content-Type": "text/plain" });
+    res.end("ID is invalid");
+    return;
+  }
+
+  const userIndex = users.findIndex((user) => user.id === userId);
+  if (userIndex === -1) {
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("User not found");
+    return;
+  }
+
+  users.splice(userIndex, 1);
+
+  res.writeHead(204);
+  res.end();
+};
+
 const getAllUsers = (req: http.IncomingMessage, res: http.ServerResponse) => {
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ users: users }));
@@ -75,9 +153,9 @@ const getAllUsers = (req: http.IncomingMessage, res: http.ServerResponse) => {
 const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url || "", true);
   const { pathname } = parsedUrl;
+  const userId = pathname?.split("/")[3];
 
   if (req.method === "GET" && pathname?.startsWith("/api/users")) {
-    const userId = pathname?.split("/")[3];
     if (userId) {
       getUserById(req, res, userId);
     } else {
@@ -85,6 +163,18 @@ const server = http.createServer((req, res) => {
     }
   } else if (pathname === "/api/users" && req.method === "POST") {
     createUser(req, res);
+  } else if (
+    req.method === "PUT" &&
+    pathname?.startsWith("/api/users") &&
+    userId
+  ) {
+    updateUserById(req, res, userId);
+  } else if (
+    req.method === "DELETE" &&
+    pathname?.startsWith("/api/users") &&
+    userId
+  ) {
+    deleteUserById(req, res, userId);
   } else {
     res.writeHead(404, { "Content-Type": "text/plain" });
     res.end("Error 404: non-existing endpoint");
